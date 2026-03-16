@@ -209,30 +209,29 @@ export function useGame(roomCode, playerName) {
     }).eq('id', room.id)
   }, [room, players])
 
-  const nextTurn = useCallback(async () => {
-    if (!room) return
-    // Re-fetch players to check eliminations
-    const { data: freshPlayers } = await supabase
-      .from('players')
-      .select('*')
-      .eq('room_id', room.id)
+const nextTurn = useCallback(async () => {
+  if (!room) return
+  const { data: freshPlayers } = await supabase
+    .from('players')
+    .select('*')
+    .eq('room_id', room.id)
 
-    const active = freshPlayers?.filter(p => !p.eliminated) || []
-    const { winScore } = calcParams(freshPlayers?.length || 2)
-    const winner = active.find(p => p.score >= winScore)
+  const active = freshPlayers?.filter(p => !p.eliminated) || []
+  const { winScore } = calcParams(freshPlayers?.length || 2)
+  const winner = active.find(p => p.score >= winScore)
 
-    if (winner || active.length <= 1) {
-      await supabase.from('rooms').update({
-        status: 'finished',
-        winner_id: winner?.id || active[0]?.id || null,
-      }).eq('id', room.id)
-    } else {
-      await supabase.from('rooms').update({
-        status: 'playing',
-        turn: (room.turn || 1) + 1,
-      }).eq('id', room.id)
-    }
-  }, [room])
+  if (winner || active.length <= 1) {
+    await supabase.from('rooms').update({
+      status: 'finished',
+      winner_id: winner?.id || (active.length === 1 ? active[0].id : null),
+    }).eq('id', room.id)
+  } else {
+    await supabase.from('rooms').update({
+      status: 'playing',
+      turn: (room.turn || 1) + 1,
+    }).eq('id', room.id)
+  }
+}, [room])
 
   return {
     room,
